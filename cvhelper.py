@@ -1,5 +1,25 @@
 import cv2
 import numpy as np
+from PyQt5.QtGui import QImage
+
+
+def cv_toQimage(cv_img):
+    cv_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+    height, width, channel = cv_img.shape
+    bytesPerLine = 3 * width
+    q_img = QImage(cv_img.data, width
+                   , height, bytesPerLine, QImage.Format_RGB888)
+    return q_img
+
+def q_toCVimage(q_img):
+    q_img = q_img.convertToFormat(QImage.Format_RGBA8888)
+    w,h = q_img.width(),q_img.height()
+    ptr = q_img.bits()
+    ptr.setsize(w*h*4)
+    arr = np.frombuffer(ptr,np.uint8).reshape((h, w, 4))
+    cv_img = cv2.cvtColor(arr, cv2.COLOR_BGR2RGB)
+    return cv_img
+
 
 def cv_imread(filePath):
     cv_img=cv2.imdecode(np.fromfile(filePath,dtype=np.float32),-1)
@@ -40,3 +60,14 @@ def sample_rect(rect, samples):
     pts = pts + sample_line((right, top), (left, top), samples)
 
     return pts
+
+
+if __name__ == '__main__':
+    fp = './samples/qie.jpg'
+    cvim = cv_imread(fp)
+    cv2.imshow('before', cvim)
+    cv2.waitKey()
+    qimg = cv_toQimage(cvim)
+    cvimg = q_toCVimage(qimg)
+    cv2.imshow('before', cvim)
+    cv2.waitKey()

@@ -49,8 +49,8 @@ class ImageDrawLabel(QLabel):
         if e.key() == Qt.Key_D or e.key() == Qt.Key_Delete or e.key()==Qt.Key_Backspace and self.selected_point>0 and self.state:
             if self.selected_point >= 0 and self.selected_point < len(self.points):
                 del self.points[self.selected_point]
-                self.selected_point = -1
                 print('delete:', str(self.selected_point))
+                self.selected_point = -1
             else:
                 print('delete index out of range')
         self.update()
@@ -140,6 +140,8 @@ class ImageLabelWidget(QWidget):
         self.button = QPushButton("下一步")
         self.button.setMinimumSize(200, 50)
         self.check_button = QPushButton("检查")
+        self.check_button.setMinimumSize(200, 50)
+
         self.button.setEnabled(False)
         self.select = QRadioButton('选择')
         self.add = QRadioButton('添加')

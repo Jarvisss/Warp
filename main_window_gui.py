@@ -1,14 +1,12 @@
 from PyQt5 import QtWidgets
-from PyQt5.QtWidgets import QMainWindow,QDesktopWidget
+from PyQt5.QtWidgets import QMainWindow,QDesktopWidget, QMessageBox
 import sys
-from cvhelper import q_toCVimage, cv_toQimage, sample_rect
 from image_upload_gui import ImageUploadWidget
 from image_label_gui import ImageLabelWidget
 from image_morphing_gui import ImagePreviewWidget
 from morphing_result_gui import MorphingResultWidget
-from warp import calculateDelaunayTriangles, warpTriangle
-import numpy as np
 import cv2
+import os
 
 class MainWindow(QMainWindow):
 
@@ -65,71 +63,45 @@ class MainWindow(QMainWindow):
 
     def _showResult(self):
         self.setWindowTitle('STEP4:  融合结果')
-        self._getMorphResults()
-        self.step4Widget = MorphingResultWidget(self.lpixelMap, self.rpixelMap, self.rwarps, self.morphs)
+        self.step4Widget = MorphingResultWidget(self.w, self.h,self.lpts, self.rpts, self.lpixelMap, self.rpixelMap)
         self.setCentralWidget(self.step4Widget)
         self.step4Widget.button.clicked.connect(
             self._backToFirst
         )
+        self.step4Widget.download.clicked.connect(
+            self._download
+        )
 
     def _backToFirst(self):
-        self.rwarps = []
-        self.morphs = []
         self.step1Widget = ImageUploadWidget(self.w, self.h)
         self.setCentralWidget(self.step1Widget)
         self.setWindowTitle('STEP1:  图片上传')
+        self._connect()
 
+    def _download(self):
+        r_id, m_id = self.step4Widget.getSelectedId()
+        dir = self.step4Widget.path.text()
+        if dir == '':
+            import time
+            # 取当前时间
+            dir_name = time.strftime('%Y%m%d_%H%M%S', time.localtime(time.time()))
+        else:
+            dir_name = dir
 
-    def _getMorphResults(self):
-        alphas = [1 / 6, 1 / 3, 1 / 2, 2 / 3, 5 / 6]
-        morph_alpha = 0.5
-        edge_samples = 1
-        lqimg = self.lpixelMap.toImage()
-        rqimg = self.rpixelMap.toImage()
+        dir_name = os.path.join('result', dir_name)
 
-        ### convert qimage to cvimage
-        lcvim, rcvim = q_toCVimage(lqimg),q_toCVimage(rqimg)
-        lsize, rsize = lcvim.shape, rcvim.shape
-        lrect, rrect = (0, 0, lsize[1], lsize[0]), (0, 0, rsize[1], rsize[0])
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
 
-        ### convert Qpoint List to normal List
-        llist, rlist = [(p.x(),p.y()) for p in self.lpts], [(p.x(),p.y()) for p in self.rpts]
+        for i in r_id:
+            cv2.imwrite(os.path.join(dir_name, 'warp_%.3f.jpg'%self.step4Widget.alphas[i]),self.step4Widget.rwarps[i])
 
-        ### Add Corner points to features
-        llist = llist + sample_rect(rrect, edge_samples)
-        rlist = rlist + sample_rect(lrect, edge_samples)
+        for i in m_id:
+            cv2.imwrite(os.path.join(dir_name, 'morph_%.3f.jpg'%self.step4Widget.alphas[i]),self.step4Widget.morphs[i])
 
-        ### Get delaunay indexes
-        l_delaunay_indexes = calculateDelaunayTriangles(lrect, llist)
-        r_delaunay_indexes = calculateDelaunayTriangles(rrect, rlist)
-        self.rwarps, self.morphs = [], []
-        for i,aa in enumerate(alphas):
-            print(aa)
-            warp_pts = []
-            lwarp = np.zeros(lsize, dtype=lcvim.dtype)
-            rwarp = np.zeros(rsize, dtype=lcvim.dtype)
-
-            ### Get warp mesh
-            for i in range(0, len(rlist)):
-                x = aa * llist[i][0] + (1 - aa) * rlist[i][0]
-                y = aa * llist[i][1] + (1 - aa) * rlist[i][1]
-                warp_pts.append((x, y))
-
-            for (i, j, k) in l_delaunay_indexes:
-                lt = [llist[i], llist[j], llist[k]]
-                tw = [warp_pts[i], warp_pts[j], warp_pts[k]]
-                warpTriangle(lcvim, lwarp, lt, tw)
-
-            for (i, j, k) in r_delaunay_indexes:
-                rt = [rlist[i], rlist[j], rlist[k]]
-                tw = [warp_pts[i], warp_pts[j], warp_pts[k]]
-                warpTriangle(rcvim, rwarp, rt, tw)
-
-
-            imgMorph = ((1-morph_alpha)*lwarp + morph_alpha*rwarp).astype(np.uint8)
-            self.rwarps.append(rwarp)
-            self.morphs.append(imgMorph)
-
+        self.msgbox = QMessageBox()
+        self.msgbox.setText("下载完成")
+        self.msgbox.show()
 
 
 

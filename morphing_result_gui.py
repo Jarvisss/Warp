@@ -1,11 +1,12 @@
-from PyQt5.QtCore import Qt, QSize, pyqtSignal, QPoint
-from PyQt5.QtWidgets import QWidget,QPushButton,QLabel,QHBoxLayout,QVBoxLayout, QGridLayout, QLineEdit
-from PyQt5.QtGui import QPixmap, QImage, QPainter, QPen, QColor, QFont
-from math import sqrt
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtWidgets import QWidget,QPushButton,QLabel,QHBoxLayout,QVBoxLayout, QGridLayout, QLineEdit,QMessageBox
+from PyQt5.QtGui import QPixmap
 from cvhelper import cv_toQimage, sample_rect, q_toCVimage
 from warp import warpTriangle, calculateDelaunayTriangles
 
 import numpy as np
+import cv2
+import os
 
 class ImageDrawLabel(QLabel):
     # dropImgSignal = pyqtSignal(object)
@@ -56,16 +57,12 @@ class MorphingResultWidget(QWidget):
         self.grid_spacing = 10
         self.grid_margin = 20
         self.grid_width = (self.w - 6 * self.grid_spacing - 2 * self.grid_margin) // 7
-
-
-
-
-        self.rwarp_grids= []
+        self.rwarp_grids = []
         self.alphas = [1 / 6, 1 / 3, 1 / 2, 2 / 3, 5 / 6]
         self.morph_grids= []
         self._getMorphResults()
         self._initUI()
-
+        self.download.clicked.connect(self._download)
         pass
 
     def _initUI(self):
@@ -201,6 +198,31 @@ class MorphingResultWidget(QWidget):
                 m_id.append(i)
 
         return r_id, m_id
+
+    def _download(self):
+        r_id, m_id = self.getSelectedId()
+        dir = self.path.text()
+        if dir == '':
+            import time
+            # 取当前时间
+            dir_name = time.strftime('%Y%m%d_%H%M%S', time.localtime(time.time()))
+        else:
+            dir_name = dir
+
+        dir_name = os.path.join('result', dir_name)
+
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+
+        for i in r_id:
+            cv2.imwrite(os.path.join(dir_name, 'warp_%.3f.jpg' % self.alphas[i]), self.rwarps[i])
+
+        for i in m_id:
+            cv2.imwrite(os.path.join(dir_name, 'morph_%.3f.jpg' % self.alphas[i]), self.morphs[i])
+
+        self.msgbox = QMessageBox()
+        self.msgbox.setText("下载完成")
+        self.msgbox.show()
 
 
 

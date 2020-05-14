@@ -75,7 +75,7 @@ def warpTriangle(img, iw, t, tw) :
     # Copy triangular region of the rectangular patch to the output image
     iw[rw[1]:rw[1] + rw[3], rw[0]:rw[0] + rw[2]] = iw[rw[1]:rw[1] + rw[3], rw[0]:rw[0] + rw[2]] * (1 - mask) + startImage * mask
 
-def draw_triangulation(img, pts, indexes, color):
+def draw_triangulation(img, pts, indexes, color=(255,0,0)):
     ####
     # CV.line needs INT coordinates
     ####
@@ -88,6 +88,8 @@ def draw_triangulation(img, pts, indexes, color):
     ####
     for (i,j,k) in indexes:
         # if rectContains(rect, pts[i]) and rectContains(rect, pts[j]) and rectContains(rect, pts[k]):
-        cv2.line(img, pts_int[i], pts_int[j], color, thickness=2)
-        cv2.line(img, pts_int[j], pts_int[k], color, thickness=2)
-        cv2.line(img, pts_int[k], pts_int[i], color, thickness=2)
+        cv2.line(img, pts_int[i], pts_int[j], color, thickness=1)
+        cv2.line(img, pts_int[j], pts_int[k], color, thickness=1)
+        cv2.line(img, pts_int[k], pts_int[i], color, thickness=1)
+
+    return img
